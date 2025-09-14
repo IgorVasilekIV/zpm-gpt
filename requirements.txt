@@ -1,0 +1,7 @@
+pyTelegramBotAPI
+google-genai
+SpeechRecognition
+pydub
+pillow
+pytesseract
+python-dotenv
