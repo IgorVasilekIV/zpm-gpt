@@ -1,7 +1,7 @@
-pyTelegramBotAPI
-google-genai
-SpeechRecognition
-pydub
-pillow
-pytesseract
-python-dotenv
+telebot==0.0.5
+google-genai==0.2.0
+SpeechRecognition==3.10.0
+pydub==0.25.1
+pillow==10.4.0
+pytesseract==0.3.13
+python-dotenv==1.0.1
