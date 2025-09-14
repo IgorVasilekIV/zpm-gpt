@@ -1,6 +1,6 @@
 # 📑 Changelog
 
-## [2.5.2] - 2025-09-14
+## [2.5.2] - 2025-09-15
 ### Added
 - **Per-user custom prompts** support:
   - `/setprompt <text>` — set a custom prompt
@@ -21,7 +21,7 @@
 
 ---
 
-## [2.2.1] - 2025-09-01
+## [2.2.1] - 2025-09-12
 ### Added
 - Initial bot release:
   - Text, voice, photo, and video support
