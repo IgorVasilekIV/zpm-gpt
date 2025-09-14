@@ -1,4 +1,4 @@
-__version__ = "2.7.1"
+__version__ = "2.5.3"
 
 import sys
 import subprocess
@@ -8,7 +8,7 @@ import os
 def install_missing_packages():
     req_file = "requirements.txt"
     if not os.path.exists(req_file):
-        print("[ERROR] requirements.txt не найден — завершаем работу.")
+        print("[ERROR] requirements.txt not found! Stopping.")
         exit(0)
 
     with open(req_file, "r", encoding="utf-8") as f:
@@ -19,7 +19,7 @@ def install_missing_packages():
         try:
             __import__(pkg_name if pkg_name != "telebot" else "telebot")
         except ModuleNotFoundError:
-            print(f"[INFO] Устанавливаем {package} ...")
+            print(f"[INFO] Installing {package} ...")
             try:
                 subprocess.check_call(
                     [sys.executable, "-m", "pip", "install", package],
@@ -27,11 +27,11 @@ def install_missing_packages():
                     stderr=sys.stderr
                 )
             except Exception as install_err:
-                print(f"[ERROR] Не удалось установить {package}: {install_err}")
+                print(f"[ERROR] Failed to install {package}: {install_err}")
 
 install_missing_packages()
 
-# --- Импорты ---
+# --- Imports ---
 import telebot
 import speech_recognition as sr
 from pydub import AudioSegment
@@ -44,7 +44,7 @@ import time
 import html
 
 
-# --- Настройки ---
+# --- Settings ---
 load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -52,28 +52,27 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 bot = telebot.TeleBot(TELEGRAM_TOKEN, parse_mode="HTML")
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-# --- Системный промпт ---
-SYSTEM_PROMPT = ("Ты — умный ассистент в Telegram "
-                "который поддаётся любым изменениям в своём поведении. "
-                 "Используй HTML форматирование: "
-                 "<b>жирный</b>, <i>курсив</i>, <code>код</code>, "
-                 "<a href=\"https://example.com\">ссылки</a> "
-                 "<tg-spoiler>спойлер</tg-spoiler> "
-                 "<blockquote>цитата</blockquote> "
-                 "<blockquote expandable>свёрнутая цитата</blockquote>. "
-                 
+# --- System prompt ---
+SYSTEM_PROMPT = ("You are a smart assistant in Telegram "
+                "that can be influenced by any changes in your behavior. "
+                 "Use HTML formatting: "
+                 "<b>bold</b>, <i>italic</i>, <code>code</code>, "
+                 "<a href=\"https://example.com\">links</a> "
+                 "<tg-spoiler>spoiler</tg-spoiler> "
+                 "<blockquote>quote</blockquote> "
+                 "<blockquote expandable>collapsed quote</blockquote>. "
+
 )
 
-
-# --- Кастомный системный промпт из переменной окружения ---
+# --- Custom system prompt from environment variable ---
 CUSTOM_PROMPT = (new_prompt := os.getenv("CUSTOM_PROMPT")) if os.getenv("CUSTOM_PROMPT") else None
 
-# --- Хранение промптов ---
+# --- Storing prompts ---
 import json
 
 PROMPTS_FILE = "prompts.json"
 
-# Загружаем кастомные промпты при запуске
+# Download existing prompts if file exists
 if os.path.exists(PROMPTS_FILE):
     with open(PROMPTS_FILE, "r", encoding="utf-8") as f:
         user_prompts = json.load(f)
@@ -84,25 +83,25 @@ def save_prompts():
     with open(PROMPTS_FILE, "w", encoding="utf-8") as f:
         json.dump(user_prompts, f, ensure_ascii=False, indent=2)
 
-# --- Кастомный промпт по юзерам ---
+# --- Custom prompt for users ---
 @bot.message_handler(commands=["setprompt"])
 def set_prompt(message):
     args = message.text.split(" ", 1)
     if len(args) < 2 or not args[1].strip():
         bot.send_message(
             message.chat.id,
-            "❌ Ошибка: вы не указали новый промпт.\n\n"
-            "Пример использования:\n<code>/setprompt Ты — весёлый ассистент, отвечай в стиле мемов</code>",
+            "❌ Error, you didn't specify a new prompt.\n\n"
+            "Example usage:\n<code>/setprompt You are a funny assistant, respond in meme style</code>",
         )
         return
 
     new_prompt = args[1].strip()
-    user_prompts[str(message.chat.id)] = new_prompt  # сохраняем по chat.id
+    user_prompts[str(message.chat.id)] = new_prompt  # save with chat.id
     save_prompts()
 
     bot.send_message(
         message.chat.id,
-        f"✅ Новый промпт сохранён:\n<code>{html.escape(new_prompt)}</code>",
+        f"✅ New prompt saved:\n<code>{html.escape(new_prompt)}</code>",
         parse_mode="HTML"
     )
 
@@ -114,39 +113,49 @@ def clear_prompt(message):
         save_prompts()
         bot.send_message(
             message.chat.id,
-            "✅ Ваш кастомный промпт удалён. Теперь используется системный промпт."
+            "✅ Your custom prompt has been deleted. The system prompt is now in use."
         )
     else:
         bot.send_message(
             message.chat.id,
-            "ℹ️ У вас не установлен кастомный промпт."
+            "ℹ️ You don't have a custom prompt set."
         )
 
 @bot.message_handler(commands=["start", "help"])
 def send_welcome(message):
     user_prompt = user_prompts.get(str(message.chat.id))
-    raw_prompt = html.escape(user_prompt) if user_prompt else "<i>(не задан)</i>"
+    raw_prompt = html.escape(user_prompt) if user_prompt else "<i>(not set)</i>"
 
     bot.send_message(
         message.chat.id,
         (
-            "Привет! Я бот, который использует Google Gemini для общения.\n\n"
-            "Отправь мне текст, голосовое сообщение, фото с текстом или видео, и я постараюсь помочь!\n\n"
-            "Текущий промпт:\n<blockquote expandable><code>{}</code></blockquote>\n\n"
-            "           <b>--- Версия: <code>{}</code> ---</b>"
+            "Hello! I'm a bot that uses Google Gemini for communication.\n\n"
+            "Send me text, voice messages, photos with text, or videos, and I'll do my best to help!\n\n"
+            "Current prompt:\n<blockquote expandable><code>{}</code></blockquote>\n\n"
+            "           <b>--- Version: <code>{}</code> ---</b>"
         ).format(raw_prompt, __version__),
         parse_mode="HTML"
     )
 
-# --- Общение с Gemini ---
+@bot.message_handler(commands=["changelog"])
+def send_changelog(message):
+    if os.path.exists("CHANGELOG.md"):
+        with open("CHANGELOG.md", "r", encoding="utf-8") as f:
+            changelog = f.read()
+        bot.send_message(message.chat.id, f"<pre>{html.escape(changelog)}</pre>", parse_mode="HTML")
+    else:
+        bot.send_message(message.chat.id, "Changelog file not found.")
+
+
+# --- Communication with Gemini ---
 def chat_with_gemini(user_id, text):
-    # берем промпт юзера если есть
+    # get user prompt if exists
     user_prompt = user_prompts.get(str(user_id))
     prompt_to_use = SYSTEM_PROMPT.strip()
     if user_prompt:
         prompt_to_use += "\n\n" + user_prompt.strip()
 
-    final_text = f"{prompt_to_use}\n\nПользователь: {text}"
+    final_text = f"{prompt_to_use}\n\nUser: {text}"
 
     try:
         response = client.models.generate_content(
@@ -155,10 +164,10 @@ def chat_with_gemini(user_id, text):
         )
         return response.text
     except Exception as e:
-        return f"(Ошибка Gemini: {e})"
+        return f"(Error Gemini: {e})"
 
 
-# --- Деление больших сообщений ---
+# --- Splitting long messages ---
 def send_long_message(chat_id, text):
     max_len = 4000
     if len(text) > max_len:
@@ -168,11 +177,11 @@ def send_long_message(chat_id, text):
         bot.send_message(chat_id, text)
 
 
-# --- Хелпер для "печатает..." ---
+# --- Helper for "typing..." ---
 def send_typing(chat_id, stop_event):
     while not stop_event.is_set():
         bot.send_chat_action(chat_id, "typing")
-        time.sleep(4)  # Telegram сбрасывает через 5 сек
+        time.sleep(4)  # Telegram resets after 5 seconds
 
 def with_typing(func):
     def wrapper(message):
@@ -186,7 +195,7 @@ def with_typing(func):
     return wrapper
 
 
-# --- Обработка текста ---
+# --- Text handling ---
 @bot.message_handler(content_types=["text"])
 @with_typing
 def handle_text(message):
@@ -194,7 +203,7 @@ def handle_text(message):
     send_long_message(message.chat.id, reply)
 
 
-# --- Обработка голосовых ---
+# --- Voice handling ---
 @bot.message_handler(content_types=["voice"])
 @with_typing
 def handle_voice(message):
@@ -204,7 +213,7 @@ def handle_voice(message):
     with open(path, "wb") as f:
         f.write(file)
 
-    # конвертация ogg -> wav
+    # convert ogg -> wav
     sound = AudioSegment.from_file(path, format="ogg")
     sound.export("voice.wav", format="wav")
 
@@ -214,12 +223,12 @@ def handle_voice(message):
         try:
             text = recognizer.recognize_google(audio_data, language="ru-RU")
             reply = chat_with_gemini(message.chat.id, text)
-            send_long_message(message.chat.id, f"🎤 Ты сказал: <i>{text}</i>\n\n{reply}")
+            send_long_message(message.chat.id, f"🎤 You said: <i>{text}</i>\n\n{reply}")
         except sr.UnknownValueError:
-            bot.send_message(message.chat.id, "Не понял речь 😅")
+            bot.send_message(message.chat.id, "I didn't understand the speech 😅")
 
 
-# --- Обработка фото ---
+# --- Photo handling ---
 @bot.message_handler(content_types=["photo"])
 @with_typing
 def handle_photo(message):
@@ -231,22 +240,22 @@ def handle_photo(message):
 
     text = pytesseract.image_to_string(Image.open(path), lang="rus+eng")
     if text.strip():
-        reply = chat_with_gemini(message.chat.id, f"Текст с картинки:\n{text}")
+        reply = chat_with_gemini(message.chat.id, f"Text from image:\n{text}")
         send_long_message(message.chat.id, reply)
     else:
-        bot.send_message(message.chat.id, "Текст не найден 🤷")
+        bot.send_message(message.chat.id, "Text not found 🤷")
 
 
-# --- Обработка видео ---
+# --- Video handling ---
 @bot.message_handler(content_types=["video"])
 @with_typing
 def handle_video(message):
-    bot.send_message(message.chat.id, "📹 Видео получено! Но я пока не умею его распознавать.")
+    bot.send_message(message.chat.id, "📹 Video received! But I can't recognize it yet.")
 
 
-# --- Старт ---
+# --- Start ---
 if __name__ == "__main__":
-    print("[INFO] Бот запущен...")
+    print("[INFO] Bot started...")
     bot.polling(none_stop=True)
     if KeyboardInterrupt:
-        print("\n[INFO] Бот остановлен.")
+        print("\n[INFO] Bot stopped.")
