@@ -55,12 +55,13 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 # --- System prompt ---
 SYSTEM_PROMPT = ("You are a smart assistant in Telegram "
                 "that can be influenced by any changes in your behavior. "
-                 "Use HTML formatting: "
+                 "you can use HTML formatting: "
                  "<b>bold</b>, <i>italic</i>, <code>code</code>, "
                  "<a href=\"https://example.com\">links</a> "
                  "<tg-spoiler>spoiler</tg-spoiler> "
                  "<blockquote>quote</blockquote> "
                  "<blockquote expandable>collapsed quote</blockquote>. "
+                 "But this is not necessarily"
 
 )
 
@@ -105,7 +106,7 @@ def set_prompt(message):
         parse_mode="HTML"
     )
 
-
+# --- Clear user prompt ---
 @bot.message_handler(commands=["clearprompt"])
 def clear_prompt(message):
     if str(message.chat.id) in user_prompts:
@@ -121,6 +122,7 @@ def clear_prompt(message):
             "ℹ️ You don't have a custom prompt set."
         )
 
+# --- Some info about bot ---
 @bot.message_handler(commands=["start", "help"])
 def send_welcome(message):
     user_prompt = user_prompts.get(str(message.chat.id))
@@ -137,6 +139,7 @@ def send_welcome(message):
         parse_mode="HTML"
     )
 
+# --- check last change ---
 @bot.message_handler(commands=["changelog"])
 def send_changelog(message):
     if os.path.exists("CHANGELOG.md"):
@@ -146,6 +149,10 @@ def send_changelog(message):
     else:
         bot.send_message(message.chat.id, "Changelog file not found.")
 
+# --- clear user memory ---
+@bot.message_handler(commnands=["clearmemory"])
+def clear_memory(message)
+    bot.send_message(message.chat.id, "<i>This is test command. Please wait<i/>")
 
 # --- Communication with Gemini ---
 def chat_with_gemini(user_id, text):
