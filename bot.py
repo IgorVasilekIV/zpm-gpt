@@ -1,4 +1,4 @@
-__version__ = "2.5.3"
+__version__ = "2.5.5"
 
 import sys
 import subprocess
@@ -150,7 +150,7 @@ def send_changelog(message):
         bot.send_message(message.chat.id, "Changelog file not found.")
 
 # --- clear user memory ---
-@bot.message_handler(commnands=["clearmemory"])
+@bot.message_handler(commands=["clearmemory"])
 def clear_memory(message):
     bot.send_message(message.chat.id, "<i>This is test command. Please wait<i/>")
 
