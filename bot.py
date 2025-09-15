@@ -152,7 +152,7 @@ def send_changelog(message):
 # --- clear user memory ---
 @bot.message_handler(commands=["clearmemory"])
 def clear_memory(message):
-    bot.send_message(message.chat.id, "<i>This is test command. Please wait<i/>")
+    bot.send_message(message.chat.id, "<i>This is test command. Please wait</i>")
 
 # --- Communication with Gemini ---
 def chat_with_gemini(user_id, text):
